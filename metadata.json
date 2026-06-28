@@ -1,0 +1,6 @@
+{
+  "name": "Nihongo App",
+  "description": "A Japanese learning application with spaced repetition, Kanji/Vocabulary/Grammar tracking, and AI-powered sentence breakdown.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

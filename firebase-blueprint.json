@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "Vocabulary": {
+      "title": "Vocabulary",
+      "description": "Vocabulary items for study.",
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "reading": { "type": "string" },
+        "meaning": { "type": "string" },
+        "part_of_speech": { "type": "string" },
+        "jlpt_level": { "type": "string" },
+        "example_sentence": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["word", "meaning"]
+    },
+    "Kanji": {
+      "title": "Kanji",
+      "description": "Kanji characters for study.",
+      "type": "object",
+      "properties": {
+        "character": { "type": "string" },
+        "onyomi": { "type": "string" },
+        "kunyomi": { "type": "string" },
+        "meaning": { "type": "string" },
+        "stroke_count": { "type": "number" },
+        "jlpt_level": { "type": "string" },
+        "mnemonic": { "type": "string" },
+        "example_words": { "type": "string" },
+        "example_sentence": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["character", "meaning"]
+    },
+    "Grammar": {
+      "title": "Grammar",
+      "description": "Grammar patterns for study.",
+      "type": "object",
+      "properties": {
+        "pattern": { "type": "string" },
+        "meaning": { "type": "string" },
+        "structure": { "type": "string" },
+        "example_sentence": { "type": "string" },
+        "jlpt_level": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["pattern", "meaning"]
+    },
+    "StudyLog": {
+      "title": "StudyLog",
+      "description": "Spaced repetition study log.",
+      "type": "object",
+      "properties": {
+        "item_type": { "type": "string", "enum": ["vocabulary", "kanji", "grammar"] },
+        "item_id": { "type": "string" },
+        "ease_factor": { "type": "number" },
+        "interval_days": { "type": "number" },
+        "repetitions": { "type": "number" },
+        "next_review": { "type": "string", "format": "date" },
+        "last_reviewed": { "type": "string", "format": "date" },
+        "response_quality": { "type": "number" }
+      },
+      "required": ["item_type", "item_id", "ease_factor", "interval_days", "repetitions"]
+    },
+    "DailyActivity": {
+      "title": "DailyActivity",
+      "description": "Daily study activity summary.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "items_reviewed": { "type": "number" },
+        "items_added": { "type": "number" }
+      },
+      "required": ["date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/vocabulary/{vocabId}": {
+      "schema": { "$ref": "#/entities/Vocabulary" },
+      "description": "Vocabulary items for a user"
+    },
+    "/users/{userId}/kanji/{kanjiId}": {
+      "schema": { "$ref": "#/entities/Kanji" },
+      "description": "Kanji items for a user"
+    },
+    "/users/{userId}/grammar/{grammarId}": {
+      "schema": { "$ref": "#/entities/Grammar" },
+      "description": "Grammar items for a user"
+    },
+    "/users/{userId}/study_log/{logId}": {
+      "schema": { "$ref": "#/entities/StudyLog" },
+      "description": "Study logs for spaced repetition"
+    },
+    "/users/{userId}/daily_activity/{activityId}": {
+      "schema": { "$ref": "#/entities/DailyActivity" },
+      "description": "Daily activity tracking"
+    }
+  }
+}

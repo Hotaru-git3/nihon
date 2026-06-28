@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .perspective-1000 { perspective: 1000px; }
+  .transform-style-3d { transform-style: preserve-3d; }
+  .backface-hidden { backface-visibility: hidden; }
+  .rotate-y-180 { transform: rotateY(180deg); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@layer base {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+}
+
+.flashcard-inner { 
+    width: 100%; 
+    height: 100%; 
+    position: relative; 
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+.flashcard-front, .flashcard-back { 
+    position: absolute; 
+    width: 100%; 
+    height: 100%; 
+    top: 0; 
+    left: 0; 
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+.fade-in-slide-up {
+    animation: fadeInSlideUp 0.5s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+@keyframes fadeInSlideUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 🔥 Animasi tambahan */
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+.animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+}
+
+.animate-bounce-in {
+    animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+    0% { transform: translateY(-20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9c1be;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ac5f56;
+}
+
+/* Skeleton Loader */
+.skeleton-box {
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.02) 50%, rgba(0,0,0,0.06) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* style.css - Tambahkan di bagian atas */
+
+/* 🔥 PASTIKAN SIDEBAR HILANG DI MOBILE */
+@media (max-width: 1023px) {
+  #app-sidebar {
+    display: none !important;
+  }
+}
+
+/* 🔥 PASTIKAN BOTTOM NAV MUNCUL DI MOBILE */
+@media (max-width: 1023px) {
+  #app-bottom-nav {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  #app-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* style.css - Tambahkan di bagian atas */
+
+/* 🔥 FORCE HIDE SIDEBAR DI LOGIN */
+body.login-page #app-sidebar {
+  display: none !important;
+}
+
+body.login-page #app-bottom-nav {
+  display: none !important;
+}
+
+body.login-page #main-content {
+  margin-left: 0 !important;
+  padding: 0 !important;
+}
+
