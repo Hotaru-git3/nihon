@@ -48,7 +48,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔥 AI ENDPOINT - GA PAKE AUTH (BUAT TESTING)
+// backend/server.ts
 app.post('/api/ai/breakdown', async (req, res) => {
   try {
     const { text } = req.body;
@@ -64,12 +64,15 @@ app.post('/api/ai/breakdown', async (req, res) => {
 
     console.log('📝 Analyzing:', sanitized);
     const result = await aiService.generateBreakdown(sanitized);
-    console.log('✅ AI Result:', result);
+    console.log('✅ Result:', JSON.stringify(result, null, 2));
     
     res.json(result);
   } catch (err: any) {
-    console.error('❌ AI Error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ AI Error:', err.message);
+    res.status(500).json({ 
+      error: err.message || 'Internal server error',
+      details: err.message 
+    });
   }
 });
 
