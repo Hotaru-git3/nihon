@@ -1,6 +1,5 @@
-// components/ProfileDrawer.ts
+// src/components/ProfileDrawer.ts
 import { auth } from '../firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { showToast } from './Toast';
 import { fetchDashboardStats } from '../services/api';
 
@@ -37,13 +36,11 @@ export function getAvatarColor(email: string | null): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
-// components/ProfileDrawer.ts - bagian atas
+// 🔥 Update semua avatar di app
 export function updateAllAvatars(email: string | null) {
   const initials = getInitials(email);
   const color = getAvatarColor(email);
   const displayName = email?.split('@')[0] || 'Guest';
-  
-  console.log('🔄 Updating avatars for:', email, 'initials:', initials);
   
   // Sidebar avatar
   const sidebarAvatar = document.querySelector('#app-sidebar .avatar-circle');
@@ -77,8 +74,10 @@ export function updateAllAvatars(email: string | null) {
     el.textContent = email || 'Not signed in';
   });
 }
+
 export function ProfileModal(): string {
-  const user = auth?.currentUser ?? null;
+  // 🔥 FIX: Pake optional chaining
+  const user = auth?.currentUser || null;
   const email = user?.email || localStorage.getItem('email') || null;
   const initials = getInitials(email);
   const color = getAvatarColor(email);
@@ -163,7 +162,7 @@ export function ProfileModal(): string {
 }
 
 export async function openProfile() {
-  // 🔥 Cek apakah user sudah login
+  // 🔥 FIX: Pake optional chaining
   if (!auth?.currentUser) {
     console.log('User not logged in, cannot open profile');
     showToast('Silakan login terlebih dahulu', 'error');
@@ -215,11 +214,7 @@ export function closeProfile() {
   }
 }
 
-// components/ProfileDrawer.ts - bagian initProfileListeners
 export function initProfileListeners() {
-  // 🔥 HAPUS onAuthStateChanged di sini (sudah ada di main.ts)
-  // Biar ga double update
-  
   document.body.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     
@@ -234,7 +229,7 @@ export function initProfileListeners() {
       closeProfile();
     }
     
-    // 🔥 Logout
+    // 🔥 Logout - pake import dynamic
     if (target.closest('#profile-logout-btn')) {
       closeProfile();
       import('../services/api').then(({ logoutUser }) => {
