@@ -61,7 +61,7 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/', authLimiter);
 
-app.get('/api/firebase-config', (req, res) => {
+app.get(['/api/firebase-config', '/firebase-config'], (req, res) => {
   try {
     const configPath = path.join(__dirname, '../firebase-applet-config.json');
     if (!fs.existsSync(configPath)) {
@@ -123,7 +123,7 @@ app.use('/api', (req, res, next) => {
 });
 
 // --- AI ---
-app.post('/api/ai/breakdown', authenticateToken, async (req, res) => {
+app.post(['/api/ai/breakdown', '/ai/breakdown'], authenticateToken, async (req, res) => {
   try {
     const text = req.body.text;
     
@@ -156,9 +156,11 @@ app.use((req, res, next) => {
   }
 });
 
-const PORT = process.env.NODE_ENV === 'production' ? (process.env.PORT || 3000) : 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || process.env.RENDER || !process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 export default app;

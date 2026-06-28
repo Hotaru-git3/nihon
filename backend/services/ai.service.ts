@@ -1,4 +1,4 @@
-import { OpenAI } from 'openai';
+import { GoogleGenAI, Type, Schema } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -19,52 +19,89 @@ SANGAT PENTING (ATURAN KETAT):
 
 Pastikan field "word", "character", "pattern" dan lainnya TIDAK BOLEH KOSONG. Jika tidak ada data yang relevan (misalnya tidak ada kanji atau tidak ada tata bahasa), hapus dari array (kembalikan array kosong []).
 
-Balas HANYA dalam format JSON (tanpa markdown, tanpa penjelasan):
-{
-  "vocabulary": [{"word": "kata", "reading": "cara baca", "meaning": "arti", "part_of_speech": "jenis kata", "jlpt_level": "N5"}],
-  "kanji": [{"character": "kanji", "onyomi": "onyomi", "kunyomi": "kunyomi", "meaning": "arti", "stroke_count": 0, "jlpt_level": "N5", "example_words": "contoh kata", "example_sentence": "contoh kalimat"}],
-  "grammar": [{"pattern": "pola", "meaning": "arti", "structure": "struktur", "example_sentence": "contoh kalimat"}],
-  "translation": "terjemahan"
-}`;
+Balas HANYA dalam format JSON (tanpa markdown, tanpa penjelasan).`;
+
+const responseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    vocabulary: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING },
+          reading: { type: Type.STRING },
+          meaning: { type: Type.STRING },
+          part_of_speech: { type: Type.STRING },
+          jlpt_level: { type: Type.STRING }
+        },
+        required: ["word", "reading", "meaning"]
+      }
+    },
+    kanji: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          character: { type: Type.STRING },
+          onyomi: { type: Type.STRING },
+          kunyomi: { type: Type.STRING },
+          meaning: { type: Type.STRING },
+          stroke_count: { type: Type.INTEGER },
+          jlpt_level: { type: Type.STRING },
+          example_words: { type: Type.STRING },
+          example_sentence: { type: Type.STRING }
+        },
+        required: ["character", "meaning"]
+      }
+    },
+    grammar: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          pattern: { type: Type.STRING },
+          meaning: { type: Type.STRING },
+          structure: { type: Type.STRING },
+          example_sentence: { type: Type.STRING }
+        },
+        required: ["pattern", "meaning"]
+      }
+    },
+    translation: { type: Type.STRING }
+  },
+  required: ["vocabulary", "kanji", "grammar", "translation"]
+};
 
 export class AIService {
-  private openai: OpenAI;
+  private ai: GoogleGenAI;
 
   constructor() {
-    const apiKey = process.env.NVIDIA_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error('NVIDIA_API_KEY is not configured');
+      console.warn('GEMINI_API_KEY is not configured. AI features will fail.');
     }
 
-    this.openai = new OpenAI({
-      baseURL: 'https://integrate.api.nvidia.com/v1',
-      apiKey: apiKey,
+    this.ai = new GoogleGenAI({
+      apiKey: apiKey || 'dummy-key',
     });
   }
 
   async generateBreakdown(text: string): Promise<any> {
-    const response = await this.openai.chat.completions.create({
-      model: 'meta/llama-3.1-8b-instruct',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Teks Jepang: ${text}` },
-      ],
-      temperature: 0.05,
-      top_p: 0.5,
-      max_tokens: 2048,
-      stream: false,
+    const response = await this.ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Teks Jepang: ${text}`,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+        responseSchema: responseSchema,
+      }
     });
 
-    let resultText = response.choices[0]?.message?.content || '';
-    resultText = resultText.trim();
-    if (resultText.startsWith('\`\`\`')) {
-      resultText = resultText.replace(/^\`\`\`(json)?/, '').replace(/\`\`\`$/, '').trim();
-    }
-
-    const firstBrace = resultText.indexOf('{');
-    const lastBrace = resultText.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      resultText = resultText.substring(firstBrace, lastBrace + 1);
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error("Empty response from AI");
     }
     
     try {
