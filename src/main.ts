@@ -1,4 +1,4 @@
-// main.ts
+// src/main.ts
 import './style.css';
 import { router, setAuthState } from './router';
 import { Sidebar } from './components/Sidebar';
@@ -26,14 +26,30 @@ async function initApp() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  // 🔥 Init Firebase dulu
+  // 🔥 Init Firebase
   const initialized = await initFirebase();
   if (!initialized) {
-    app.innerHTML = `<div class="p-8 text-center text-error">Failed to initialize Firebase. Please check your configuration.</div>`;
+    app.innerHTML = `
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-error/10 text-error p-6 rounded-xl max-w-md text-center">
+          <h2 class="text-xl font-bold mb-2">Failed to Initialize Firebase</h2>
+          <p class="text-sm">Please check your configuration.</p>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  // 🔥 Render app dengan sidebar, bottom nav, dll
+  // 🔥 Setup auth listener
+  if (auth) {
+    onAuthStateChanged(auth, (user) => {
+      setAuthState(user);
+      const email = user?.email || localStorage.getItem('email') || null;
+      updateAllAvatars(email);
+    });
+  }
+
+  // 🔥 Render app
   app.innerHTML = `
     ${Sidebar()}
     ${BottomNav()}
@@ -42,18 +58,6 @@ async function initApp() {
     ${ModalContainer()}
     ${ProfileModal()}
   `;
-
-  // 🔥 Setup auth listener SETELAH Firebase siap
-  if (auth) {
-    onAuthStateChanged(auth, (user) => {
-      // 🔥 Update auth state di router
-      setAuthState(user);
-      
-      // 🔥 UPDATE AVATAR DI SIDEBAR, BOTTOM NAV, DAN PROFILE
-      const email = user?.email || localStorage.getItem('email') || null;
-      updateAllAvatars(email);
-    });
-  }
 
   // Listen to history changes
   window.addEventListener('popstate', router);
