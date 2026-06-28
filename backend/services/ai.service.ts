@@ -1,119 +1,77 @@
-// backend/services/ai.service.ts
+import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const SYSTEM_PROMPT = `Kamu adalah guru bahasa Jepang ahli. Untuk teks Jepang yang diberikan, ekstrak:
+const SYSTEM_PROMPT = `Kamu adalah guru bahasa Jepang ahli yang SANGAT KETAT dan FAKTUAL. 
+Untuk teks Jepang yang diberikan, ekstrak detail berikut dengan akurasi 100%.
 
-1. **Kosakata**: Semua kata dengan "word", "reading" (hiragana), "meaning" (dalam BAHASA INDONESIA)
-2. **Kanji**: Setiap karakter kanji dengan "character", "onyomi" (katakana), "kunyomi" (hiragana), "meaning" (dalam BAHASA INDONESIA)
-3. **Tata Bahasa**: Pola grammar dengan "pattern", "meaning" (dalam BAHASA INDONESIA), "example_sentence"
-4. **Translation**: Terjemahan utuh ke BAHASA INDONESIA
+SANGAT PENTING (ATURAN KETAT): 
+- DILARANG KERAS berhalusinasi atau mengarang arti kata/kanji. 
+- Terjemahan utuh, arti kosakata (meaning), arti kanji, dan arti tata bahasa HARUS SELALU dalam Bahasa Indonesia.
+- Terjemahan, cara baca (romaji/hiragana), dan arti HARUS valid sesuai kamus bahasa Jepang asli. 
+- Jika input teks tidak masuk akal (misal salah ketik, karakter Mandarin/Hanzi yang bukan kanji Jepang, atau karakter acak), abaikan saja. JANGAN mencoba menebak arti yang salah (seperti mengartikan 邮 sebagai minum). Lebih baik kembalikan array kosong jika tidak ada arti yang valid.
 
-BALAS HANYA JSON (tanpa markdown, tanpa penjelasan):
+1. Semua kosakata (kecuali partikel dan kata level N5 paling dasar). Field "meaning" wajib dalam Bahasa Indonesia.
+2. Semua kanji yang muncul. Untuk kanji sertakan contoh kalimat singkat yang menggunakannya, dan juga contoh gabungan kata (elemen pendukung) yang menggunakan kanji tersebut beserta artinya (misal: "銀行 (ginkou) - bank"). Field "meaning" wajib dalam Bahasa Indonesia.
+3. Semua pola tata bahasa. Field "meaning" wajib dalam Bahasa Indonesia.
+4. Terjemahan utuh ke Bahasa Indonesia.
+
+Pastikan field "word", "character", "pattern" dan lainnya TIDAK BOLEH KOSONG. Jika tidak ada data yang relevan (misalnya tidak ada kanji atau tidak ada tata bahasa), hapus dari array (kembalikan array kosong []).
+
+Balas HANYA dalam format JSON (tanpa markdown, tanpa penjelasan):
 {
-  "vocabulary": [{"word": "...", "reading": "...", "meaning": "..."}],
-  "kanji": [{"character": "...", "onyomi": "...", "kunyomi": "...", "meaning": "..."}],
-  "grammar": [{"pattern": "...", "meaning": "...", "example_sentence": "..."}],
-  "translation": "..."
-}
-
-JANGAN ADA ARRAY KOSONG. Jika tidak ada data, isi array kosong [].
-
-Contoh untuk "私は学生です":
-{
-  "vocabulary": [
-    {"word": "私", "reading": "わたし", "meaning": "saya"},
-    {"word": "学生", "reading": "がくせい", "meaning": "pelajar/mahasiswa"}
-  ],
-  "kanji": [
-    {"character": "私", "onyomi": "シ", "kunyomi": "わたし", "meaning": "saya/pribadi"},
-    {"character": "学生", "onyomi": "ガクセイ", "kunyomi": "まなぶ", "meaning": "pelajar/mahasiswa"}
-  ],
-  "grammar": [
-    {"pattern": "〜です", "meaning": "adalah (bentuk sopan)", "example_sentence": "私は学生です"},
-    {"pattern": "〜は", "meaning": "partikel topik", "example_sentence": "私は"}
-  ],
-  "translation": "Saya adalah pelajar/mahasiswa"
+  "vocabulary": [{"word": "kata", "reading": "cara baca", "meaning": "arti", "part_of_speech": "jenis kata", "jlpt_level": "N5"}],
+  "kanji": [{"character": "kanji", "onyomi": "onyomi", "kunyomi": "kunyomi", "meaning": "arti", "stroke_count": 0, "jlpt_level": "N5", "example_words": "contoh kata", "example_sentence": "contoh kalimat"}],
+  "grammar": [{"pattern": "pola", "meaning": "arti", "structure": "struktur", "example_sentence": "contoh kalimat"}],
+  "translation": "terjemahan"
 }`;
 
 export class AIService {
-  private apiKey: string;
+  private openai: OpenAI;
 
   constructor() {
     const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
       throw new Error('NVIDIA_API_KEY is not configured');
     }
-    this.apiKey = apiKey;
-    console.log('✅ NVIDIA API Key loaded');
+
+    this.openai = new OpenAI({
+      baseURL: 'https://integrate.api.nvidia.com/v1',
+      apiKey: apiKey,
+    });
   }
 
   async generateBreakdown(text: string): Promise<any> {
-    console.log('📝 Calling NVIDIA API for:', text);
+    const response = await this.openai.chat.completions.create({
+      model: 'meta/llama-3.1-8b-instruct',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Teks Jepang: ${text}` },
+      ],
+      temperature: 0.05,
+      top_p: 0.5,
+      max_tokens: 2048,
+      stream: false,
+    });
+
+    let resultText = response.choices[0]?.message?.content || '';
+    resultText = resultText.trim();
+    if (resultText.startsWith('\`\`\`')) {
+      resultText = resultText.replace(/^\`\`\`(json)?/, '').replace(/\`\`\`$/, '').trim();
+    }
+
+    const firstBrace = resultText.indexOf('{');
+    const lastBrace = resultText.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      resultText = resultText.substring(firstBrace, lastBrace + 1);
+    }
     
     try {
-      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'meta/llama-3.1-8b-instruct',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Teks Jepang: "${text}"` }
-          ],
-          temperature: 0.05,
-          max_tokens: 2048
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ NVIDIA API Error:', response.status, errorText);
-        throw new Error(`NVIDIA API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ NVIDIA API Response received');
-
-      let resultText = data.choices?.[0]?.message?.content || '';
-      console.log('📄 Raw response:', resultText);
-
-      // Clean JSON
-      resultText = resultText.trim();
-      if (resultText.startsWith('```')) {
-        resultText = resultText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-      }
-
-      const firstBrace = resultText.indexOf('{');
-      const lastBrace = resultText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        resultText = resultText.substring(firstBrace, lastBrace + 1);
-      }
-
-      try {
-        const result = JSON.parse(resultText);
-        console.log('✅ Parsed result:', JSON.stringify(result, null, 2));
-        
-        // Pastikan semua field ada
-        return {
-          vocabulary: result.vocabulary || [],
-          kanji: result.kanji || [],
-          grammar: result.grammar || [],
-          translation: result.translation || `Terjemahan: "${text}"`
-        };
-      } catch (parseError) {
-        console.error('❌ JSON Parse Error:', parseError);
-        console.error('Raw text:', resultText);
-        throw new Error('Invalid JSON response from AI');
-      }
-
-    } catch (error: any) {
-      console.error('❌ AI Service Error:', error.message);
-      throw new Error(`AI service error: ${error.message}`);
+      return JSON.parse(resultText);
+    } catch (e) {
+      console.error("Failed to parse JSON. Raw output:", resultText);
+      throw new Error("Invalid JSON response from AI");
     }
   }
 }
