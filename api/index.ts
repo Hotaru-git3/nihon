@@ -2,10 +2,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from 'express';
 import cors from 'cors';
 import OpenAI from 'openai';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import fs from 'fs';
-import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -19,60 +15,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10kb' }));
 
-// ========================================
-// FIREBASE ADMIN INIT
-// ========================================
-if (!getApps().length) {
-  try {
-    const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      initializeApp({
-        credential: cert(config),
-        projectId: config.projectId,
-      });
-      console.log('✅ Firebase Admin initialized with config file');
-    } else {
-      const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
-      if (projectId) {
-        initializeApp({ projectId });
-        console.log('✅ Firebase Admin initialized with project ID:', projectId);
-      } else {
-        initializeApp();
-        console.log('✅ Firebase Admin initialized with default credentials');
-      }
-    }
-  } catch (err: any) {
-    console.error('❌ Firebase Admin init error:', err.message);
-    if (!getApps().length) {
-      initializeApp();
-      console.log('⚠️ Firebase Admin initialized with default (fallback)');
-    }
-  }
-}
-
-// ========================================
-// AUTH MIDDLEWARE
-// ========================================
-const authenticateToken = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  
-  try {
-    const decodedToken = await getAuth().verifyIdToken(token);
-    (req as any).user = decodedToken;
-    next();
-  } catch (error) {
-    console.error("Token verification failed:", error);
-    return res.status(403).json({ error: 'Forbidden: Invalid token' });
-  }
-};
-
-// ========================================
-// OPENAI CLIENT (NVIDIA)
-// ========================================
 const openai = new OpenAI({
   apiKey: process.env.NVIDIA_API_KEY || '',
   baseURL: 'https://integrate.api.nvidia.com/v1',
@@ -94,10 +36,8 @@ SANGAT PENTING (ATURAN KETAT):
 
 Balas HANYA JSON (tanpa markdown, tanpa penjelasan).`;
 
-// ========================================
-// AI BREAKDOWN ENDPOINT
-// ========================================
-app.post('/api/ai/breakdown', authenticateToken, async (req, res) => {
+// AI Breakdown endpoint - TANPA AUTH
+app.post('/api/ai/breakdown', async (req, res) => {
   try {
     const { text } = req.body;
     
@@ -143,14 +83,13 @@ app.post('/api/ai/breakdown', authenticateToken, async (req, res) => {
     }
 
   } catch (err: any) {
-    console.error('❌ AI API Error:', err.message);
-    res.status(500).json({ error: "An error occurred while processing the request." });
+    console.error('❌ Error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok' });
 });
 
 export default (req: VercelRequest, res: VercelResponse) => {
