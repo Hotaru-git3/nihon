@@ -3,35 +3,22 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const SYSTEM_PROMPT = `Kamu adalah guru bahasa Jepang ahli. Untuk teks Jepang yang diberikan, ekstrak:
+const SYSTEM_PROMPT = `Kamu adalah guru bahasa Jepang ahli yang SANGAT KETAT dan FAKTUAL. 
+Untuk teks Jepang yang diberikan, ekstrak detail berikut dengan akurasi 100%.
 
-1. **Kosakata**: Semua kata (termasuk partikel penting), dengan:
-   - "word": kata asli
-   - "reading": cara baca (hiragana)
-   - "meaning": arti dalam BAHASA INDONESIA
+SANGAT PENTING (ATURAN KETAT): 
+- DILARANG KERAS berhalusinasi atau mengarang arti kata/kanji. 
+- Terjemahan utuh, arti kosakata (meaning), arti kanji, dan arti tata bahasa HARUS SELALU dalam Bahasa Indonesia.
+- Terjemahan, cara baca (romaji/hiragana), dan arti HARUS valid sesuai kamus bahasa Jepang asli. 
+- Jika input teks tidak masuk akal (misal salah ketik, karakter Mandarin/Hanzi yang bukan kanji Jepang, atau karakter acak), abaikan saja. JANGAN mencoba menebak arti yang salah.
 
-2. **Kanji**: Setiap karakter kanji dengan:
-   - "character": kanji
-   - "onyomi": onyomi (katakana)
-   - "kunyomi": kunyomi (hiragana)  
-   - "meaning": arti dalam BAHASA INDONESIA
-
-3. **Tata Bahasa**: Pola grammar dengan:
-   - "pattern": pola
-   - "meaning": arti dalam BAHASA INDONESIA
-   - "example_sentence": contoh kalimat
-
-4. **Translation**: Terjemahan utuh ke BAHASA INDONESIA
-
-BALAS HANYA JSON:
+Balas HANYA dalam format JSON (tanpa markdown, tanpa penjelasan):
 {
-  "vocabulary": [{"word": "...", "reading": "...", "meaning": "..."}],
-  "kanji": [{"character": "...", "onyomi": "...", "kunyomi": "...", "meaning": "..."}],
-  "grammar": [{"pattern": "...", "meaning": "...", "example_sentence": "..."}],
-  "translation": "..."
-}
-
-JANGAN ADA ARRAY KOSONG - isi semua field yang relevan!`;
+  "vocabulary": [{"word": "kata", "reading": "cara baca", "meaning": "arti"}],
+  "kanji": [{"character": "kanji", "onyomi": "onyomi", "kunyomi": "kunyomi", "meaning": "arti"}],
+  "grammar": [{"pattern": "pola", "meaning": "arti", "example_sentence": "contoh"}],
+  "translation": "terjemahan"
+}`;
 
 export class AIService {
   private apiKey: string;
@@ -39,7 +26,7 @@ export class AIService {
   constructor() {
     const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
-      console.warn('⚠️ NVIDIA_API_KEY not configured, using mock mode');
+      console.warn('⚠️ NVIDIA_API_KEY not configured');
       this.apiKey = '';
     } else {
       this.apiKey = apiKey;
@@ -47,13 +34,14 @@ export class AIService {
   }
 
   async generateBreakdown(text: string): Promise<any> {
-    // 🔥 KALO GA ADA API KEY, PAKE MOCK YANG LEBIH BAIK
+    // 🔥 KALO GA ADA API KEY, PAKE MOCK
     if (!this.apiKey) {
-      console.log('🔧 Using enhanced mock mode');
-      return this.getEnhancedFallback(text);
+      console.log('🔧 Using mock mode (no API key)');
+      return this.getFallbackData(text);
     }
 
     try {
+      // 🔥 PAKE FETCH NATIVE - BUKAN OPENAI SDK
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -64,7 +52,7 @@ export class AIService {
           model: 'meta/llama-3.1-8b-instruct',
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Teks: "${text}"` }
+            { role: 'user', content: `Teks Jepang: ${text}` }
           ],
           temperature: 0.05,
           max_tokens: 2048
@@ -73,7 +61,7 @@ export class AIService {
 
       if (!response.ok) {
         console.error('NVIDIA API Error:', response.status);
-        return this.getEnhancedFallback(text);
+        return this.getFallbackData(text);
       }
 
       const data = await response.json();
@@ -92,35 +80,28 @@ export class AIService {
       }
       
       try {
-        const result = JSON.parse(resultText);
-        // 🔥 PASTIKAN FIELD ADA
-        return {
-          vocabulary: result.vocabulary || [],
-          kanji: result.kanji || [],
-          grammar: result.grammar || [],
-          translation: result.translation || `Terjemahan: "${text}"`
-        };
+        return JSON.parse(resultText);
       } catch (e) {
         console.error('JSON Parse Error, using fallback');
-        return this.getEnhancedFallback(text);
+        return this.getFallbackData(text);
       }
       
     } catch (error) {
-      console.error('AI Error:', error);
-      return this.getEnhancedFallback(text);
+      console.error('AI Service Error:', error);
+      return this.getFallbackData(text);
     }
   }
 
-  // 🔥 ENHANCED FALLBACK - LEBIH PINTER
-  private getEnhancedFallback(text: string): any {
+  // 🔥 FALLBACK DATA
+  private getFallbackData(text: string): any {
     const vocabulary = [];
     const kanji = [];
     const grammar = [];
 
-    // 🔥 KAMUS SEDERHANA
-    const dictionary: Record<string, { reading: string; meaning: string }> = {
+    // Kamus sederhana
+    const dict: Record<string, { reading: string; meaning: string }> = {
       '私': { reading: 'わたし', meaning: 'saya' },
-      '学生': { reading: 'がくせい', meaning: 'pelajar/mahasiswa' },
+      '学生': { reading: 'がくせい', meaning: 'pelajar' },
       'です': { reading: 'です', meaning: 'adalah (sopan)' },
       '勉強': { reading: 'べんきょう', meaning: 'belajar' },
       '日本語': { reading: 'にほんご', meaning: 'bahasa Jepang' },
@@ -137,107 +118,44 @@ export class AIService {
       '先生': { reading: 'せんせい', meaning: 'guru' },
       '友達': { reading: 'ともだち', meaning: 'teman' },
       '家族': { reading: 'かぞく', meaning: 'keluarga' },
-      '時間': { reading: 'じかん', meaning: 'waktu' },
-      '今日': { reading: 'きょう', meaning: 'hari ini' },
-      '明日': { reading: 'あした', meaning: 'besok' },
-      '昨日': { reading: 'きのう', meaning: 'kemarin' },
-      '何': { reading: 'なに', meaning: 'apa' },
-      '誰': { reading: 'だれ', meaning: 'siapa' },
-      'どこ': { reading: 'どこ', meaning: 'di mana' },
-      'いつ': { reading: 'いつ', meaning: 'kapan' },
-      'なぜ': { reading: 'なぜ', meaning: 'mengapa' },
-      'どう': { reading: 'どう', meaning: 'bagaimana' },
-      'とても': { reading: 'とても', meaning: 'sangat' },
-      'あまり': { reading: 'あまり', meaning: 'tidak terlalu' },
-      'よく': { reading: 'よく', meaning: 'sering' },
-      'ときどき': { reading: 'ときどき', meaning: 'kadang-kadang' },
-      'いつも': { reading: 'いつも', meaning: 'selalu' },
-      'そして': { reading: 'そして', meaning: 'dan' },
-      'だから': { reading: 'だから', meaning: 'karena itu' },
-      'でも': { reading: 'でも', meaning: 'tetapi' },
-      'また': { reading: 'また', meaning: 'lagi' },
     };
 
-    // 🔥 PARSE TEXT - ambil kata per kata
+    // Parse teks
     const chars = text.replace(/\s/g, '').split('');
     let currentWord = '';
-    let currentKanji = '';
 
     for (const char of chars) {
-      // Kanji
-      if (char.match(/[\u4E00-\u9FAF]/)) {
-        currentKanji += char;
+      if (char.match(/[\u3040-\u30FF\u4E00-\u9FAF]/)) {
         currentWord += char;
-      } 
-      // Hiragana/Katakana
-      else if (char.match(/[\u3040-\u30FF]/)) {
-        if (currentKanji) {
-          // Tambah kanji
-          if (dictionary[currentKanji]) {
-            kanji.push({
-              character: currentKanji,
-              onyomi: dictionary[currentKanji].reading,
-              kunyomi: dictionary[currentKanji].reading,
-              meaning: dictionary[currentKanji].meaning
-            });
-          }
-          currentKanji = '';
-        }
-        currentWord += char;
-      } 
-      // Lainnya (partikel, tanda baca)
-      else {
+      } else {
         if (currentWord) {
-          // Coba cari di kamus
-          const found = dictionary[currentWord];
+          const found = dict[currentWord];
           if (found) {
-            vocabulary.push({
-              word: currentWord,
-              reading: found.reading,
-              meaning: found.meaning
-            });
-          } else {
-            // Coba deteksi partikel
-            if (['は', 'が', 'を', 'に', 'で', 'へ', 'と', 'から', 'まで', 'の'].includes(currentWord)) {
-              grammar.push({
-                pattern: `〜${currentWord}`,
-                meaning: `partikel ${currentWord}`,
-                example_sentence: text
-              });
-            } else {
-              vocabulary.push({
-                word: currentWord,
-                reading: currentWord,
-                meaning: '...'
+            vocabulary.push({ word: currentWord, reading: found.reading, meaning: found.meaning });
+            // Cek apakah ada kanji
+            if (currentWord.match(/[\u4E00-\u9FAF]/)) {
+              kanji.push({
+                character: currentWord,
+                onyomi: found.reading,
+                kunyomi: found.reading,
+                meaning: found.meaning
               });
             }
+          } else {
+            vocabulary.push({ word: currentWord, reading: currentWord, meaning: '...' });
           }
           currentWord = '';
         }
       }
     }
-
-    // 🔥 Tambah sisa kata
     if (currentWord) {
-      const found = dictionary[currentWord];
+      const found = dict[currentWord];
       if (found) {
-        vocabulary.push({
-          word: currentWord,
-          reading: found.reading,
-          meaning: found.meaning
-        });
+        vocabulary.push({ word: currentWord, reading: found.reading, meaning: found.meaning });
       }
     }
-    if (currentKanji && dictionary[currentKanji]) {
-      kanji.push({
-        character: currentKanji,
-        onyomi: dictionary[currentKanji].reading,
-        kunyomi: dictionary[currentKanji].reading,
-        meaning: dictionary[currentKanji].meaning
-      });
-    }
 
-    // 🔥 Deteksi grammar
+    // Deteksi grammar
     const grammarPatterns: Record<string, string> = {
       'です': 'adalah (bentuk sopan)',
       'ます': 'bentuk sopan',
@@ -250,15 +168,11 @@ export class AIService {
       'と': 'partikel bersama',
       'から': 'partikel dari',
       'まで': 'partikel sampai',
-      'の': 'partikel kepemilikan',
-      'よね': 'partikel konfirmasi',
-      'ね': 'partikel kesepakatan',
-      'よ': 'partikel penekanan',
-      'か': 'partikel pertanyaan'
+      'の': 'partikel kepemilikan'
     };
 
     for (const [pattern, meaning] of Object.entries(grammarPatterns)) {
-      if (text.includes(pattern) && !grammar.find(g => g.pattern === `〜${pattern}`)) {
+      if (text.includes(pattern)) {
         grammar.push({
           pattern: `〜${pattern}`,
           meaning: meaning,
@@ -271,40 +185,8 @@ export class AIService {
       vocabulary: vocabulary.slice(0, 15),
       kanji: kanji.slice(0, 10),
       grammar: grammar.slice(0, 8),
-      translation: this.translateJapanese(text)
+      translation: `Terjemahan: "${text}"`
     };
-  }
-
-  // 🔥 TERJEMAHAN SEDERHANA
-  private translateJapanese(text: string): string {
-    // Coba translate sederhana
-    let result = text;
-    
-    const translations: Record<string, string> = {
-      '私は': 'saya',
-      '学生です': 'adalah pelajar',
-      'です': 'adalah',
-      '勉強します': 'belajar',
-      '日本語': 'bahasa Jepang',
-      '毎日': 'setiap hari',
-      '本を読みます': 'membaca buku',
-      '学校に行きます': 'pergi ke sekolah',
-      '食べます': 'makan',
-      '飲みます': 'minum',
-      '見ます': 'melihat',
-      '行きます': 'pergi',
-      '来ます': 'datang',
-      '帰ります': 'pulang'
-    };
-
-    for (const [jp, id] of Object.entries(translations)) {
-      if (text.includes(jp)) {
-        result = text.replace(jp, id);
-        break;
-      }
-    }
-
-    return `Terjemahan: "${result}"`;
   }
 }
 

@@ -48,12 +48,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔥 AI ENDPOINT - SEDERHANA (GA PAKE AUTH DULU)
+// 🔥 AI ENDPOINT - GA PAKE AUTH (BUAT TESTING)
 app.post('/api/ai/breakdown', async (req, res) => {
   try {
     const { text } = req.body;
     
-    // 🔥 VALIDASI
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'Text is required' });
     }
@@ -79,21 +78,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 🔥 SERVE STATIC (untuk production)
-if (process.env.NODE_ENV === 'production') {
-  import('path').then(path => {
-    const staticPath = path.join(__dirname, '../dist');
-    app.use(express.static(staticPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(staticPath, 'index.html'));
-    });
-  });
-}
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 export default app;
