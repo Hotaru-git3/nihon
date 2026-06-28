@@ -90,9 +90,28 @@ const sanitizeInput = (str: any): string => {
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-// Initialize Firebase Admin (Uses environment credentials or application default credentials)
+// Initialize Firebase Admin
 if (!getApps().length) {
-  initializeApp();
+  let projectId = undefined;
+  try {
+    const configPath = path.join(__dirname, '../firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      projectId = config.projectId;
+    }
+  } catch (err) {
+    console.warn("Could not load firebase-applet-config.json for admin init:", err);
+  }
+  
+  if (!projectId) {
+    projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  }
+
+  if (projectId) {
+    initializeApp({ projectId });
+  } else {
+    initializeApp();
+  }
 }
 
 // Auth Middleware
@@ -156,8 +175,11 @@ app.use((req, res, next) => {
   }
 });
 
-if (process.env.NODE_ENV !== 'production' || process.env.RENDER || !process.env.VERCEL) {
-  const PORT = process.env.PORT || 3000;
+const isDev = process.env.NODE_ENV === 'development';
+const PORT = isDev ? 5000 : (process.env.PORT || 3000);
+
+// Only listen if not running in a serverless environment like Vercel
+if (process.env.VERCEL_ENV === undefined && process.env.VERCEL === undefined) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
