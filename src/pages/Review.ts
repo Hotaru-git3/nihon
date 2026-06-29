@@ -24,11 +24,15 @@ export async function renderReview(container: HTMLElement, mode: 'today' | 'rand
     if (cards.length === 0) {
       container.innerHTML = `
         <div class="flex flex-col items-center justify-center h-full text-center space-y-4">
-          <span class="text-6xl">🎉</span>
-          <h2 class="font-headline-lg text-on-surface">Tidak ada kartu untuk direview ${mode === 'today' ? 'hari ini' : ''}!</h2>
+          <span class="text-6xl">${mode === 'today' ? '🎉' : '📚'}</span>
+          <h2 class="font-headline-lg text-on-surface">${mode === 'today' ? 'Tidak ada kartu untuk direview hari ini!' : 'Belum ada kartu tersimpan!'}</h2>
+          <p class="font-body-md text-on-surface-variant">${mode === 'today' ? 'Semua kartu sudah direview. Coba review acak untuk mengulang semua materi.' : 'Tambahkan item dulu dari Library atau AI Analyzer.'}</p>
           <div class="flex gap-4 mt-4">
             <a href="/dashboard" class="px-6 py-2 bg-surface-container-high text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors">Kembali ke Dashboard</a>
-            <button id="btn-review-acak" class="px-6 py-2 bg-primary text-on-primary rounded-lg shadow hover:bg-primary/90 transition-colors">Review Ulang Acak</button>
+            ${mode === 'today' ? 
+              '<button id="btn-review-acak" class="px-6 py-2 bg-primary text-on-primary rounded-lg shadow hover:bg-primary/90 transition-colors">Review Ulang Acak</button>' : 
+              '<a href="/library" class="px-6 py-2 bg-primary text-on-primary rounded-lg shadow hover:bg-primary/90 transition-colors">Tambah Item</a>'
+            }
           </div>
         </div>
       `;
@@ -55,7 +59,7 @@ function renderCurrentCard(container: HTMLElement) {
       <div class="flex flex-col items-center justify-center h-full text-center space-y-4 fade-in-slide-up">
         <span class="text-6xl">🎊</span>
         <h2 class="font-headline-lg text-on-surface">Review Selesai!</h2>
-        <p class="font-body-md text-on-surface-variant">Kerja bagus menyelesaikan sesi hari ini.</p>
+        <p class="font-body-md text-on-surface-variant">Kerja bagus menyelesaikan sesi ini.</p>
         <div class="flex gap-4 mt-4">
           <a href="/dashboard" class="px-6 py-2 bg-surface-container-high text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors">Kembali ke Dashboard</a>
           <button id="btn-review-acak-end" class="px-6 py-2 bg-primary text-on-primary rounded-lg shadow hover:bg-primary/90 transition-colors">Review Ulang Acak</button>

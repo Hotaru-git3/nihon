@@ -6,7 +6,6 @@ import { fetchDashboardStats } from '../services/api';
 let Chart: any;
 
 export async function renderDashboard(container: HTMLElement) {
-  // 🔥 Ambil email dari Firebase Auth atau localStorage
   const user = auth?.currentUser;
   const email = user?.email || localStorage.getItem('email') || 'Guest';
   const displayName = email.split('@')[0] || 'Guest';
@@ -18,9 +17,7 @@ export async function renderDashboard(container: HTMLElement) {
       <div class="h-10 w-48 skeleton-box mb-2"></div>
       <div class="h-6 w-64 skeleton-box"></div>
     </header>
-
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
-      <!-- Left Column -->
       <div class="lg:col-span-2 space-y-gutter">
         <div class="bg-surface rounded-xl border border-outline-variant p-stack_lg shadow-level1 flex items-center space-x-6">
           <div class="w-20 h-20 skeleton-box rounded-full shrink-0"></div>
@@ -29,7 +26,6 @@ export async function renderDashboard(container: HTMLElement) {
             <div class="h-6 w-1/3 skeleton-box"></div>
           </div>
         </div>
-
         <div class="bg-surface rounded-xl border border-outline-variant p-stack_lg shadow-level1">
           <div class="h-6 w-32 skeleton-box mb-stack_md"></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-stack_md">
@@ -43,35 +39,21 @@ export async function renderDashboard(container: HTMLElement) {
             </div>
           </div>
         </div>
-
         <div class="w-full h-16 skeleton-box rounded-xl"></div>
       </div>
-
-      <!-- Right Column -->
       <div class="space-y-gutter">
         <div class="bg-surface rounded-xl border border-outline-variant p-stack_md shadow-level1">
           <div class="h-6 w-32 skeleton-box mb-4"></div>
           <ul class="space-y-3">
-            <li class="flex items-center space-x-3 p-2">
-              <div class="h-8 w-8 skeleton-box rounded-full"></div>
-              <div class="h-6 w-24 skeleton-box"></div>
-            </li>
-            <li class="flex items-center space-x-3 p-2">
-              <div class="h-8 w-8 skeleton-box rounded-full"></div>
-              <div class="h-6 w-24 skeleton-box"></div>
-            </li>
-            <li class="flex items-center space-x-3 p-2">
-              <div class="h-8 w-8 skeleton-box rounded-full"></div>
-              <div class="h-6 w-32 skeleton-box"></div>
-            </li>
+            <li class="flex items-center space-x-3 p-2"><div class="h-8 w-8 skeleton-box rounded-full"></div><div class="h-6 w-24 skeleton-box"></div></li>
+            <li class="flex items-center space-x-3 p-2"><div class="h-8 w-8 skeleton-box rounded-full"></div><div class="h-6 w-24 skeleton-box"></div></li>
+            <li class="flex items-center space-x-3 p-2"><div class="h-8 w-8 skeleton-box rounded-full"></div><div class="h-6 w-32 skeleton-box"></div></li>
           </ul>
         </div>
-
         <div class="bg-surface rounded-xl border border-outline-variant p-stack_md shadow-level1">
           <div class="h-6 w-32 skeleton-box mb-4"></div>
           <div class="h-32 w-full skeleton-box"></div>
         </div>
-        
         <div class="bg-surface rounded-xl border border-outline-variant p-stack_md shadow-level1">
           <div class="h-6 w-32 skeleton-box mb-4"></div>
           <ul class="space-y-2">
@@ -87,6 +69,8 @@ export async function renderDashboard(container: HTMLElement) {
 
   try {
     const stats = await fetchDashboardStats();
+    const dailyGoal = parseInt(localStorage.getItem('daily_goal') || '20');
+    const jlptTarget = localStorage.getItem('jlpt_target') || 'N5';
     
     container.innerHTML = `
       <header class="flex justify-between items-start mb-10 mt-4 sm:mt-0">
@@ -141,19 +125,19 @@ export async function renderDashboard(container: HTMLElement) {
               <div class="space-y-1">
                 <div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">Kosakata</span><span class="text-rupiahku-brown font-bold">${stats.total_vocab > 0 ? Math.round((stats.progress?.mastered_vocab || 0) / stats.total_vocab * 100) : 0}%</span></div>
                 <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-                  <div class="bg-rupiahku-brown h-full rounded-full" style="width: ${stats.total_vocab > 0 ? Math.round((stats.progress?.mastered_vocab || 0) / stats.total_vocab * 100) : 0}%"></div>
+                  <div class="bg-rupiahku-brown h-full rounded-full transition-all duration-500" style="width: ${stats.total_vocab > 0 ? Math.round((stats.progress?.mastered_vocab || 0) / stats.total_vocab * 100) : 0}%"></div>
                 </div>
               </div>
               <div class="space-y-1">
                 <div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">Kanji</span><span class="text-rupiahku-brown font-bold">${stats.total_kanji > 0 ? Math.round((stats.progress?.mastered_kanji || 0) / stats.total_kanji * 100) : 0}%</span></div>
                 <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-                  <div class="bg-rupiahku-brown h-full rounded-full" style="width: ${stats.total_kanji > 0 ? Math.round((stats.progress?.mastered_kanji || 0) / stats.total_kanji * 100) : 0}%"></div>
+                  <div class="bg-rupiahku-brown h-full rounded-full transition-all duration-500" style="width: ${stats.total_kanji > 0 ? Math.round((stats.progress?.mastered_kanji || 0) / stats.total_kanji * 100) : 0}%"></div>
                 </div>
               </div>
               <div class="space-y-1">
                 <div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">Tata Bahasa</span><span class="text-rupiahku-brown font-bold">${stats.total_grammar > 0 ? Math.round((stats.progress?.mastered_grammar || 0) / stats.total_grammar * 100) : 0}%</span></div>
                 <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-                  <div class="bg-rupiahku-brown h-full rounded-full" style="width: ${stats.total_grammar > 0 ? Math.round((stats.progress?.mastered_grammar || 0) / stats.total_grammar * 100) : 0}%"></div>
+                  <div class="bg-rupiahku-brown h-full rounded-full transition-all duration-500" style="width: ${stats.total_grammar > 0 ? Math.round((stats.progress?.mastered_grammar || 0) / stats.total_grammar * 100) : 0}%"></div>
                 </div>
               </div>
             </div>
@@ -163,60 +147,24 @@ export async function renderDashboard(container: HTMLElement) {
           <div class="bg-surface rounded-xl border border-outline-variant p-stack_md shadow-sm mt-gutter">
             <h3 class="font-headline-md text-body-lg font-semibold text-on-background mb-4 border-b border-outline-variant pb-2">Pencapaian</h3>
             <div class="flex flex-wrap justify-center gap-4 py-2">
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center opacity-40 grayscale">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">wb_sunny</span>
+              ${[
+                { icon: 'wb_sunny', label: 'Early Bird', earned: stats.achievements?.early_bird },
+                { icon: 'bedtime', label: 'Night Owl', earned: stats.achievements?.night_owl },
+                { icon: 'menu_book', label: 'Vocab Master', earned: stats.achievements?.vocab_master },
+                { icon: 'school', label: 'Kanji Master', earned: stats.achievements?.kanji_master },
+                { icon: 'psychology', label: 'Grammar Pro', earned: stats.achievements?.grammar_master },
+                { icon: 'local_fire_department', label: '7 Day Streak', earned: stats.achievements?.streak_7 },
+                { icon: 'hotel_class', label: '30 Day Streak', earned: stats.achievements?.streak_30 },
+                { icon: 'smart_toy', label: 'AI Fan', earned: stats.achievements?.ai_enthusiast },
+                { icon: 'military_tech', label: 'N1 Hero', earned: stats.achievements?.n1_hero },
+              ].map(a => `
+                <div class="flex flex-col items-center space-y-1">
+                  <div class="w-12 h-12 rounded-full ${a.earned ? 'bg-rupiahku-brown/20 text-rupiahku-brown' : 'bg-surface-container-highest text-on-surface-variant opacity-40 grayscale'} flex items-center justify-center transition-all duration-300">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">${a.icon}</span>
+                  </div>
+                  <span class="text-[10px] font-medium ${a.earned ? 'text-rupiahku-brown' : 'text-on-surface-variant'} text-center">${a.label}</span>
                 </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">Early Bird</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center opacity-40 grayscale">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bedtime</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">Night Owl</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-rupiahku-brown/20 text-rupiahku-brown flex items-center justify-center">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">menu_book</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">Vocab Master</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-rupiahku-brown/20 text-rupiahku-brown flex items-center justify-center">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">school</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">Kanji Master</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-rupiahku-brown/20 text-rupiahku-brown flex items-center justify-center">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">Grammar Pro</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center opacity-40 grayscale">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">7 Day Streak</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center opacity-40 grayscale">
-                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">hotel_class</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">30 Day Streak</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center opacity-40 grayscale">
-                  <span class="material-symbols-outlined">smart_toy</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">AI Fan</span>
-              </div>
-              <div class="flex flex-col items-center space-y-1">
-                <div class="w-12 h-12 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center opacity-40 grayscale">
-                  <span class="material-symbols-outlined">military_tech</span>
-                </div>
-                <span class="text-[10px] font-medium text-on-surface-variant text-center">N1 Hero</span>
-              </div>
+              `).join('')}
             </div>
           </div>
 
@@ -230,7 +178,7 @@ export async function renderDashboard(container: HTMLElement) {
               <div class="bg-surface rounded-lg border border-outline-variant p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
                   <span class="block font-japanese-text text-japanese-text text-rupiahku-brown font-bold mb-1">勉強</span>
-                  <span class="block font-label-sm text-label-sm text-on-surface-variant uppercase mb-2">Kanji ${localStorage.getItem('jlpt_target') || 'N5'}</span>
+                  <span class="block font-label-sm text-label-sm text-on-surface-variant uppercase mb-2">Kanji ${jlptTarget}</span>
                   <p class="font-body-md text-body-md text-on-surface mb-4">Belajar</p>
                 </div>
                 <a href="/library" class="w-full block text-center py-2 px-3 bg-rupiahku-brown text-white text-label-sm font-medium rounded-lg hover:bg-rupiahku-brown/90 transition-colors">Pelajari Sekarang</a>
@@ -276,7 +224,7 @@ export async function renderDashboard(container: HTMLElement) {
             </ul>
           </div>
 
-          <!-- Weekly Activity Card -->
+          <!-- Weekly Activity Chart -->
           <div class="bg-surface rounded-xl border border-outline-variant p-stack_md shadow-level1">
             <h3 class="font-headline-md text-body-lg font-semibold text-on-background mb-4 border-b border-outline-variant pb-2">Minggu ini: <span class="text-rupiahku-brown">${stats.reviewed_today || 0}</span> review</h3>
             <div class="h-32 pt-4">
@@ -288,7 +236,18 @@ export async function renderDashboard(container: HTMLElement) {
           <div class="bg-surface rounded-xl border border-outline-variant p-stack_md shadow-level1">
             <h3 class="font-headline-md text-body-lg font-semibold text-on-background mb-4 border-b border-outline-variant pb-2">Recently Added</h3>
             <ul class="space-y-2">
-              <li class="text-on-surface-variant text-center py-4">Belum ada item ditambahkan.</li>
+              ${stats.recently_added && stats.recently_added.length > 0 ? 
+                stats.recently_added.map((item: any) => `
+                  <li class="flex items-center space-x-3 p-2 hover:bg-surface-container-low rounded-lg transition-colors">
+                    <span class="text-lg">${item.type === 'vocabulary' ? '📖' : item.type === 'kanji' ? '🀄' : '📐'}</span>
+                    <div class="flex-1 min-w-0">
+                      <span class="font-japanese-text text-sm font-bold truncate block">${item.text}</span>
+                      <span class="text-xs text-on-surface-variant truncate block">${item.subtext}</span>
+                    </div>
+                  </li>
+                `).join('')
+                : '<li class="text-on-surface-variant text-center py-4">Belum ada item ditambahkan.</li>'
+              }
             </ul>
           </div>
 
@@ -297,16 +256,16 @@ export async function renderDashboard(container: HTMLElement) {
             <h3 class="font-headline-md text-body-lg font-semibold text-on-background mb-4 border-b border-outline-variant pb-2">Target Belajar</h3>
             <ul class="space-y-2">
               <li class="flex items-center space-x-3 p-2 hover:bg-surface-container-low rounded-lg transition-colors">
-                <span class="material-symbols-outlined text-on-surface-variant">radio_button_unchecked</span>
-                <span class="font-body-md text-body-md text-on-surface">Review ${localStorage.getItem('daily_goal') || '20'} cards (0/${localStorage.getItem('daily_goal') || '20'})</span>
+                <span class="material-symbols-outlined ${stats.reviewed_today >= dailyGoal ? 'text-green-500' : 'text-on-surface-variant'}">${stats.reviewed_today >= dailyGoal ? 'check_circle' : 'radio_button_unchecked'}</span>
+                <span class="font-body-md text-body-md text-on-surface">Review ${dailyGoal} cards (${stats.reviewed_today || 0}/${dailyGoal})</span>
               </li>
               <li class="flex items-center space-x-3 p-2 hover:bg-surface-container-low rounded-lg transition-colors">
-                <span class="material-symbols-outlined text-on-surface-variant">radio_button_unchecked</span>
-                <span class="font-body-md text-body-md text-on-surface">Add 5 new items (0/5)</span>
+                <span class="material-symbols-outlined ${stats.added_today >= 5 ? 'text-green-500' : 'text-on-surface-variant'}">${stats.added_today >= 5 ? 'check_circle' : 'radio_button_unchecked'}</span>
+                <span class="font-body-md text-body-md text-on-surface">Add 5 new items (${stats.added_today || 0}/5)</span>
               </li>
               <li class="flex items-center space-x-3 p-2 hover:bg-surface-container-low rounded-lg transition-colors">
-                <span class="material-symbols-outlined text-on-surface-variant">radio_button_unchecked</span>
-                <span class="font-body-md text-body-md text-on-surface">Complete 1 AI Analysis (0/1)</span>
+                <span class="material-symbols-outlined ${(stats.ai_breakdowns_today || 0) >= 1 ? 'text-green-500' : 'text-on-surface-variant'}">${(stats.ai_breakdowns_today || 0) >= 1 ? 'check_circle' : 'radio_button_unchecked'}</span>
+                <span class="font-body-md text-body-md text-on-surface">Complete 1 AI Analysis (${stats.ai_breakdowns_today || 0}/1)</span>
               </li>
             </ul>
           </div>
@@ -317,7 +276,7 @@ export async function renderDashboard(container: HTMLElement) {
             <div class="space-y-3">
               <div class="flex items-start space-x-3">
                 <span class="material-symbols-outlined text-rupiahku-brown shrink-0">auto_awesome</span>
-                <p class="text-body-md text-on-surface-variant">Fokus pada ${localStorage.getItem('jlpt_target') || 'JLPT N5'} hari ini untuk mempertahankan progres Anda yang konsisten.</p>
+                <p class="text-body-md text-on-surface-variant">Fokus pada ${jlptTarget} hari ini untuk mempertahankan progres Anda yang konsisten.</p>
               </div>
               <a href="/ai" class="w-full block text-center py-2 px-3 bg-rupiahku-brown/10 text-rupiahku-brown text-label-sm font-semibold rounded-lg hover:bg-rupiahku-brown/20 transition-colors">Coba AI Analyzer</a>
             </div>
@@ -326,7 +285,7 @@ export async function renderDashboard(container: HTMLElement) {
       </div>
     `;
 
-    // 🔥 Load Chart.js dynamically
+    // Load Chart.js dynamically
     try {
       const chartModule = await import('chart.js/auto');
       Chart = chartModule.default;
