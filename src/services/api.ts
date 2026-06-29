@@ -70,41 +70,93 @@ const getUserRef = () => {
   return doc(db, 'users', auth.currentUser.uid);
 };
 
-// -- Dashboard --
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const userRef = getUserRef();
-  const logsSnap = await getDocs(collection(userRef, 'study_log'));
-  let totalVocab = 0, totalKanji = 0, totalGrammar = 0;
-  const now = new Date().toISOString().split('T')[0];
-  let todayReviewCount = 0;
+  
+  // Fetch semua collections
+  const [vocabSnap, kanjiSnap, grammarSnap, logsSnap] = await Promise.all([
+    getDocs(collection(userRef, 'vocabulary')),
+    getDocs(collection(userRef, 'kanji')),
+    getDocs(collection(userRef, 'grammar')),
+    getDocs(collection(userRef, 'study_log'))
+  ]);
+  
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  
+  let totalVocab = vocabSnap.size;
+  let totalKanji = kanjiSnap.size;
+  let totalGrammar = grammarSnap.size;
+  let dueToday = 0;
+  let reviewedToday = 0;
+  let addedToday = 0;
   let masteredVocab = 0, masteredKanji = 0, masteredGrammar = 0;
-
+  
+  // Process study logs
+  const recentItems: any[] = [];
+  
   logsSnap.forEach(d => {
     const data = d.data();
-    if (data.item_type === 'vocabulary') {
-      totalVocab++;
-      if (data.ease_factor >= 2.5 && data.interval_days > 21) masteredVocab++;
+    
+    // Count due today
+    if (data.next_review && data.next_review <= todayStr) {
+      dueToday++;
     }
-    if (data.item_type === 'kanji') {
-      totalKanji++;
-      if (data.ease_factor >= 2.5 && data.interval_days > 21) masteredKanji++;
+    
+    // Count reviewed today
+    if (data.last_reviewed === todayStr) {
+      reviewedToday++;
     }
-    if (data.item_type === 'grammar') {
-      totalGrammar++;
-      if (data.ease_factor >= 2.5 && data.interval_days > 21) masteredGrammar++;
+    
+    // Mastered items
+    if (data.ease_factor >= 2.5 && data.interval_days > 21) {
+      if (data.item_type === 'vocabulary') masteredVocab++;
+      if (data.item_type === 'kanji') masteredKanji++;
+      if (data.item_type === 'grammar') masteredGrammar++;
     }
-    if (data.next_review && data.next_review <= now) todayReviewCount++;
   });
-
+  
+  // Count added today
+  const countToday = (snap: any) => {
+    snap.forEach((d: any) => {
+      const created = d.data().created_at;
+      if (created && created.startsWith(todayStr)) addedToday++;
+      
+      // Collect recent items
+      if (created) {
+        recentItems.push({
+          type: d.data().word ? 'vocabulary' : d.data().character ? 'kanji' : 'grammar',
+          text: d.data().word || d.data().character || d.data().pattern || '',
+          subtext: d.data().meaning || '',
+          created_at: created
+        });
+      }
+    });
+  };
+  
+  countToday(vocabSnap);
+  countToday(kanjiSnap);
+  countToday(grammarSnap);
+  
+  // Sort & limit recent
+  recentItems.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const recentlyAdded = recentItems.slice(0, 5).map(i => ({
+    type: i.type,
+    text: i.text,
+    subtext: i.subtext,
+    created_at: i.created_at
+  }));
+  
   return {
-    streak: 0,
+    streak: localStorage.getItem('streak') ? parseInt(localStorage.getItem('streak')!) : 0,
     total_vocab: totalVocab,
     total_kanji: totalKanji,
     total_grammar: totalGrammar,
-    due_today: todayReviewCount,
-    reviewed_today: 0,
-    added_today: 0,
-    weekly_activity: [],
+    due_today: dueToday,
+    reviewed_today: reviewedToday,
+    added_today: addedToday,
+    weekly_activity: [], // Bisa ditambahin nanti
+    recently_added: recentlyAdded,
     progress: {
       mastered_vocab: masteredVocab,
       mastered_kanji: masteredKanji,
@@ -116,12 +168,11 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       vocab_master: masteredVocab >= 100,
       kanji_master: masteredKanji >= 50,
       grammar_master: masteredGrammar >= 50,
-      streak_7: false,
-      streak_30: false,
+      streak_7: parseInt(localStorage.getItem('streak') || '0') >= 7,
+      streak_30: parseInt(localStorage.getItem('streak') || '0') >= 30,
       ai_enthusiast: false,
       n1_hero: false
     },
-    recently_added: [],
     ai_breakdowns_today: 0
   };
 }
