@@ -65,6 +65,13 @@ async function handleAnalyze() {
   try {
     const result = await analyzeText(text);
     renderResults(panel, result);
+    
+    // 🔥 Track AI usage - ANALYZE juga dihitung
+    const today = new Date().toISOString().split('T')[0];
+    const aiKey = `ai_count_${today}`;
+    const current = parseInt(localStorage.getItem(aiKey) || '0');
+    localStorage.setItem(aiKey, (current + 1).toString());
+    
   } catch (error) {
     panel.innerHTML = `
       <div class="p-6 bg-error-container text-on-error-container rounded-xl flex flex-col items-center justify-center h-full m-auto text-center">
@@ -161,6 +168,13 @@ function renderResults(panel: HTMLElement, data: any) {
     btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span>`;
     const data = JSON.parse(decodeURIComponent(dataStr));
     await saveFromAI(data, type);
+    
+    // 🔥 Track AI usage pas simpan item
+    const today = new Date().toISOString().split('T')[0];
+    const aiKey = `ai_count_${today}`;
+    const current = parseInt(localStorage.getItem(aiKey) || '0');
+    localStorage.setItem(aiKey, (current + 1).toString());
+    
     showToast('Berhasil disimpan!', 'success');
     btn.className = "text-on-primary bg-primary border border-primary px-3 py-1 rounded-md text-sm font-semibold transition-colors";
     btn.innerHTML = `✅ Tersimpan`;

@@ -201,7 +201,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       ai_enthusiast: aiBreakdownsToday >= 5,
       n1_hero: false
     },
-    ai_breakdowns_today: aiBreakdownsToday
+    ai_breakdowns_today: parseInt(localStorage.getItem(`ai_count_${todayStr}`) || '0')
   };
 }
 
