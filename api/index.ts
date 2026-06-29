@@ -22,14 +22,14 @@ SANGAT PENTING (ATURAN KETAT):
 - DILARANG KERAS berhalusinasi atau mengarang arti kata/kanji. 
 - Terjemahan utuh, arti kosakata (meaning), arti kanji, dan arti tata bahasa HARUS SELALU dalam Bahasa Indonesia.
 - Terjemahan, cara baca (romaji/hiragana), dan arti HARUS valid sesuai kamus bahasa Jepang asli. 
-- Jika input teks tidak masuk akal, abaikan saja. JANGAN mencoba menebak arti yang salah. Lebih baik kembalikan array kosong jika tidak ada arti yang valid.
+- Jika input teks tidak masuk akal (misal salah ketik, karakter Mandarin/Hanzi yang bukan kanji Jepang, atau karakter acak), abaikan saja. JANGAN mencoba menebak arti yang salah (seperti mengartikan 邮 sebagai minum). Lebih baik kembalikan array kosong jika tidak ada arti yang valid.
 
 1. Semua kosakata (kecuali partikel dan kata level N5 paling dasar). Field "meaning" wajib dalam Bahasa Indonesia.
 2. Semua kanji yang muncul. Untuk kanji sertakan contoh kalimat singkat yang menggunakannya, dan juga contoh gabungan kata (elemen pendukung) yang menggunakan kanji tersebut beserta artinya (misal: "銀行 (ginkou) - bank"). Field "meaning" wajib dalam Bahasa Indonesia.
 3. Semua pola tata bahasa. Field "meaning" wajib dalam Bahasa Indonesia.
 4. Terjemahan utuh ke Bahasa Indonesia.
 
-Pastikan field "word", "character", "pattern" dan lainnya TIDAK BOLEH KOSONG. Jika tidak ada data yang relevan, hapus dari array (kembalikan array kosong []).
+Pastikan field "word", "character", "pattern" dan lainnya TIDAK BOLEH KOSONG. Jika tidak ada data yang relevan (misalnya tidak ada kanji atau tidak ada tata bahasa), hapus dari array (kembalikan array kosong []).
 
 Balas HANYA dalam format JSON (tanpa markdown, tanpa penjelasan):
 {
@@ -39,96 +39,61 @@ Balas HANYA dalam format JSON (tanpa markdown, tanpa penjelasan):
   "translation": "terjemahan"
 }`;
 
-interface ModelConfig {
-  name: string;
-  apiKey: string;
-  temperature: number;
-  top_p: number;
-  max_tokens: number;
-}
-
 class AIService {
-  private models: ModelConfig[];
+  private openai: OpenAI;
 
   constructor() {
-    this.models = [
-      {
-        name: 'stockmark/stockmark-2-100b-instruct',
-        apiKey: process.env.NVIDIA_API_KEY_STOCKMARK || '',
-        temperature: 0.05,
-        top_p: 0.5,
-        max_tokens: 2048,
-      },
-      {
-        name: 'meta/llama-3.3-70b-instruct',
-        apiKey: process.env.NVIDIA_API_KEY_LLAMA || '',
-        temperature: 0.2,
-        top_p: 0.7,
-        max_tokens: 1024,
-      },
-      {
-        name: 'google/gemma-3n-e2b-it',
-        apiKey: process.env.NVIDIA_API_KEY_GEMMA || '',
-        temperature: 0.2,
-        top_p: 0.7,
-        max_tokens: 512,
-      },
-    ].filter(m => m.apiKey); // Hanya model yang punya API key
+    const apiKey = process.env.NVIDIA_API_KEY;
+    if (!apiKey) {
+      throw new Error('NVIDIA_API_KEY is not configured');
+    }
+
+    this.openai = new OpenAI({
+      baseURL: 'https://integrate.api.nvidia.com/v1',
+      apiKey: apiKey,
+    });
   }
 
   async generateBreakdown(text: string): Promise<any> {
-    let lastError = null;
+    const response = await this.openai.chat.completions.create({
+      model: 'stockmark/stockmark-2-100b-instruct',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Teks Jepang: ${text}` },
+      ],
+      temperature: 0.05,
+      top_p: 0.5,
+      max_tokens: 2048,
+      stream: false,
+    });
 
-    for (const modelConfig of this.models) {
-      try {
-        console.log(`🤖 Trying model: ${modelConfig.name}`);
-        
-        const openai = new OpenAI({
-          baseURL: 'https://integrate.api.nvidia.com/v1',
-          apiKey: modelConfig.apiKey,
-        });
-
-        const response = await openai.chat.completions.create({
-          model: modelConfig.name,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Teks Jepang: ${text}` },
-          ],
-          temperature: modelConfig.temperature,
-          top_p: modelConfig.top_p,
-          max_tokens: modelConfig.max_tokens,
-          stream: false,
-        });
-
-        let resultText = response.choices[0]?.message?.content || '';
-        resultText = resultText.trim();
-        
-        if (resultText.startsWith('```')) {
-          resultText = resultText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
-        }
-
-        const firstBrace = resultText.indexOf('{');
-        const lastBrace = resultText.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-          resultText = resultText.substring(firstBrace, lastBrace + 1);
-        }
-        
-        const parsed = JSON.parse(resultText);
-        console.log(`✅ Success with model: ${modelConfig.name}`);
-        return parsed;
-
-      } catch (err: any) {
-        console.log(`❌ Model ${modelConfig.name} failed:`, err.message);
-        lastError = err;
-      }
+    let resultText = response.choices[0]?.message?.content || '';
+    resultText = resultText.trim();
+    
+    // Clean markdown code blocks
+    if (resultText.startsWith('```')) {
+      resultText = resultText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
     }
 
-    throw lastError || new Error('All models failed');
+    // Extract JSON
+    const firstBrace = resultText.indexOf('{');
+    const lastBrace = resultText.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      resultText = resultText.substring(firstBrace, lastBrace + 1);
+    }
+    
+    try {
+      return JSON.parse(resultText);
+    } catch (e) {
+      console.error("Failed to parse JSON. Raw output:", resultText);
+      throw new Error("Invalid JSON response from AI");
+    }
   }
 }
 
 const aiService = new AIService();
 
+// AI Breakdown endpoint
 app.post('/api/ai/breakdown', async (req, res) => {
   try {
     const { text } = req.body;
@@ -156,7 +121,7 @@ app.post('/api/ai/breakdown', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', models: aiService['models'].length });
+  res.json({ status: 'ok' });
 });
 
 export default (req: VercelRequest, res: VercelResponse) => {
