@@ -73,7 +73,7 @@ const getUserRef = () => {
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const userRef = getUserRef();
   
-  // Fetch semua collections
+  // Fetch all collections
   const [vocabSnap, kanjiSnap, grammarSnap, logsSnap] = await Promise.all([
     getDocs(collection(userRef, 'vocabulary')),
     getDocs(collection(userRef, 'kanji')),
@@ -91,6 +91,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   let reviewedToday = 0;
   let addedToday = 0;
   let masteredVocab = 0, masteredKanji = 0, masteredGrammar = 0;
+  let aiBreakdownsToday = 0;
   
   // Process study logs
   const recentItems: any[] = [];
@@ -114,13 +115,20 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       if (data.item_type === 'kanji') masteredKanji++;
       if (data.item_type === 'grammar') masteredGrammar++;
     }
+    
+    // AI breakdowns
+    if (data.activity_type === 'ai_breakdown' && data.date === todayStr) {
+      aiBreakdownsToday++;
+    }
   });
   
   // Count added today
   const countToday = (snap: any) => {
     snap.forEach((d: any) => {
       const created = d.data().created_at;
-      if (created && created.startsWith(todayStr)) addedToday++;
+      if (created && created.startsWith(todayStr)) {
+        addedToday++;
+      }
       
       // Collect recent items
       if (created) {
@@ -147,15 +155,35 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     created_at: i.created_at
   }));
   
+  // Update localStorage untuk streak
+  const lastLoginDate = localStorage.getItem('last_login_date');
+  const streak = parseInt(localStorage.getItem('streak') || '0');
+  let newStreak = streak;
+  if (lastLoginDate) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    if (lastLoginDate === yesterdayStr) {
+      newStreak = streak + 1;
+    } else if (lastLoginDate !== todayStr) {
+      newStreak = 1;
+    }
+  } else {
+    newStreak = 1;
+  }
+  localStorage.setItem('streak', newStreak.toString());
+  localStorage.setItem('last_login_date', todayStr);
+  
   return {
-    streak: localStorage.getItem('streak') ? parseInt(localStorage.getItem('streak')!) : 0,
+    streak: newStreak,
     total_vocab: totalVocab,
     total_kanji: totalKanji,
     total_grammar: totalGrammar,
     due_today: dueToday,
     reviewed_today: reviewedToday,
     added_today: addedToday,
-    weekly_activity: [], // Bisa ditambahin nanti
+    weekly_activity: [],
     recently_added: recentlyAdded,
     progress: {
       mastered_vocab: masteredVocab,
@@ -168,16 +196,15 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       vocab_master: masteredVocab >= 100,
       kanji_master: masteredKanji >= 50,
       grammar_master: masteredGrammar >= 50,
-      streak_7: parseInt(localStorage.getItem('streak') || '0') >= 7,
-      streak_30: parseInt(localStorage.getItem('streak') || '0') >= 30,
-      ai_enthusiast: false,
+      streak_7: newStreak >= 7,
+      streak_30: newStreak >= 30,
+      ai_enthusiast: aiBreakdownsToday >= 5,
       n1_hero: false
     },
-    ai_breakdowns_today: 0
+    ai_breakdowns_today: aiBreakdownsToday
   };
 }
 
-// -- Review --
 export async function fetchTodayReview(): Promise<ReviewItem[]> {
   const userRef = getUserRef();
   const logsSnap = await getDocs(collection(userRef, 'study_log'));
@@ -187,31 +214,53 @@ export async function fetchTodayReview(): Promise<ReviewItem[]> {
   
   for (const logDoc of logsSnap.docs) {
     const logData = logDoc.data();
+    // Fix: next_review HARUS <= sekarang
     if (logData.next_review && logData.next_review <= now) {
       const itemSnap = await getDoc(doc(userRef, logData.item_type, logData.item_id));
       if (itemSnap.exists()) {
         const itemData = itemSnap.data();
-        let front = '', back = '', reading = '', example = '';
+        let front = '', back = '', reading = '', example = '', example_words = '', example_sentence = '';
+        
         if (logData.item_type === 'vocabulary') {
-          front = itemData.word; back = itemData.meaning; reading = itemData.reading; example = itemData.example_sentence;
+          front = itemData.word || '';
+          back = itemData.meaning || '';
+          reading = itemData.reading || '';
+          example_sentence = itemData.example_sentence || '';
         } else if (logData.item_type === 'kanji') {
-          front = itemData.character; back = itemData.meaning; reading = `${itemData.onyomi} / ${itemData.kunyomi}`; example = itemData.mnemonic;
-        } else {
-          front = itemData.pattern; back = itemData.meaning; reading = itemData.structure; example = itemData.example_sentence;
+          front = itemData.character || '';
+          back = itemData.meaning || '';
+          reading = `${itemData.onyomi || ''} / ${itemData.kunyomi || ''}`;
+          example = itemData.mnemonic || '';
+          example_words = itemData.example_words || '';
+          example_sentence = itemData.example_sentence || '';
+        } else if (logData.item_type === 'grammar') {
+          front = itemData.pattern || '';
+          back = itemData.meaning || '';
+          reading = itemData.structure || '';
+          example_sentence = itemData.example_sentence || '';
         }
         
-        items.push({
-          log_id: logDoc.id,
-          item_type: logData.item_type as any,
-          item_id: logData.item_id,
-          ease_factor: logData.ease_factor,
-          interval_days: logData.interval_days,
-          repetitions: logData.repetitions,
-          front, back, reading, example, extra: logData.item_type
-        });
+        if (front && back) {
+          items.push({
+            log_id: logDoc.id,
+            item_type: logData.item_type as any,
+            item_id: logData.item_id,
+            ease_factor: logData.ease_factor || 2.5,
+            interval_days: logData.interval_days || 0,
+            repetitions: logData.repetitions || 0,
+            front,
+            back,
+            reading,
+            example,
+            example_words,
+            example_sentence,
+            extra: logData.item_type
+          });
+        }
       }
     }
   }
+  
   return items;
 }
 
