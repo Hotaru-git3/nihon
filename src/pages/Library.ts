@@ -217,7 +217,7 @@ function renderTable(items: any[], total: number) {
         <td class="p-4 text-on-surface-variant text-sm">${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
         <td class="p-4 text-center">
           <div class="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button class="p-1 text-on-surface-variant hover:text-error transition-colors" onclick="window.deleteItem('${item.type}', ${item.id})">
+            <button class="p-1 text-on-surface-variant hover:text-error transition-colors" onclick="window.deleteItem('${item.type}', '${item.id}')">
               <span class="material-symbols-outlined text-[20px]">delete</span>
             </button>
           </div>
@@ -306,7 +306,7 @@ function openAddModal() {
   loadData();
 };
 
-(window as any).deleteItem = async (type: string, id: number) => {
+(window as any).deleteItem = async (type: string, id: string) => {
   try {
     if(type === 'vocabulary') await deleteVocabulary(id);
     if(type === 'kanji') await deleteKanji(id);
